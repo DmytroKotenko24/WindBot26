@@ -21,7 +21,9 @@ import plotly.graph_objects as go #Trocou-se a biblioteca original matplotlib
 
 # Configurações iniciais
 enablePlot=True
-Imagem2, Imagem3, Imagem4=False
+Imagem2=False
+Imagem3=False
+Imagem4=False
 
 """
 ##variáveis controlo abrir janelas
