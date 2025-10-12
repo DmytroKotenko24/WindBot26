@@ -1,36 +1,22 @@
-#Importação de bibliotecas
-# pyrealsense2: biblioteca para interagir com câmeras Intel RealSense
+# Bibliotecas necessárias
 import pyrealsense2 as rs
-# Numpy: biblioteca usada para manipulação de arrays de forma eficiente
 import numpy as np
-# OpenCV: biblioteca para processamento e exibição de imagens
 import cv2
-# argparse: biblioteca usada para facilitar a manipulação de argumentos de linha de comando
 import argparse
-# os.path: biblioteca para manipulação de caminhos de arquivos
 import os.path
 import matplotlib.pyplot as plt
-# scipy.spatial.transform: módulo da SciPy para manipulação de transformações espaciais, como rotações
 from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 
-image_rearenged = np.load(r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\arraySCANPorta.npy")
-image_rearengedT = np.load("arraySCANTorre.npy")
-maior_contorno_bag=np.load("maiorContornoPorta.npy")
-contorno_bag_image=np.load("contorno_bag_image.npy")
-
-
-
-
-
+# Configurações iniciais
+image_rearenged = np.load(r"/home/dmytro-overlord/VSCode_Workspace/arraySCANPorta.npy")
+image_rearengedT = np.load(r"/home/dmytro-overlord/VSCode_Workspace/arraySCANTorre.npy")
+maior_contorno_bag=np.load(r"/home/dmytro-overlord/VSCode_Workspace/maiorContornoPorta.npy")
+contorno_bag_image=np.load(r"/home/dmytro-overlord/VSCode_Workspace/contorno_bag_image.npy")
 enablePlot=False
 
-
-
-
-
 """Criacao pipeline"""
-BAG_FILE = "p1.bag"
+BAG_FILE = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/p1.bag"
 # Cria pipeline para capturar dados da câmera
 pipeline = rs.pipeline()
 # Criar objeto de configuração para o pipeline

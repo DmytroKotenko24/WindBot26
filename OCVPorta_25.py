@@ -9,6 +9,7 @@
 #######            ##################     ######    ######       ######     ########     ########
 #######            ##################     ######     ######      ######     ########     ########
 
+# Bibliotecas necessárias
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -18,6 +19,7 @@ from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 import plotly.graph_objects as go #Trocou-se a biblioteca original matplotlib
 
+# Configurações iniciais
 enablePlot=True
 Imagem2, Imagem3, Imagem4=False
 
