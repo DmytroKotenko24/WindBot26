@@ -1,3 +1,27 @@
+#############      ##################     ################   #############  #####################
+###############    ##################     ################   #############  #####################
+#######     ####   ######     #######     #####     ######   #############  #####################
+#######   ######   ######     #######     #####    ######        ######     #######      ########
+#############      ######     #######     ############           ######     #######      ########
+###########        ######     #######     #############          ######     #####################
+#######            ######     #######     ######   ######        ######     #####################
+#######            ######     #######     ######    #####        ######     ########     ########
+#######            ##################     ######    ######       ######     ########     ########
+#######            ##################     ######     ######      ######     ########     ########
+
+import pyrealsense2 as rs
+import numpy as np
+import cv2
+import argparse
+import os.path
+from scipy.spatial.transform import Rotation
+from tqdm import tqdm
+import plotly.graph_objects as go #Trocou-se a biblioteca original matplotlib
+
+enablePlot=True
+Imagem2, Imagem3, Imagem4=False
+
+"""
 ##variáveis controlo abrir janelas
 Imagem1=False
 Imagem2=False
@@ -14,39 +38,8 @@ if todasJanelas== True:
     Imagem1=Imagem2=Imagem3=Imagem4=Imagem5=Imagem6=Imagem7=Imagem8=Imagem9=Imagem10=True
 else:
     Imagem1=Imagem2=Imagem3=Imagem4=Imagem5=Imagem6=Imagem7=Imagem8=Imagem9=Imagem10=False
+"""
 
-enablePlot=True
-
-#############      ##################     ################   #############  #####################
-###############    ##################     ################   #############  #####################
-#######     ####   ######     #######     #####     ######   #############  #####################
-#######   ######   ######     #######     #####    ######        ######     #######      ########
-#############      ######     #######     ############           ######     #######      ########
-###########        ######     #######     #############          ######     #####################
-#######            ######     #######     ######   ######        ######     #####################
-#######            ######     #######     ######    #####        ######     ########     ########
-#######            ##################     ######    ######       ######     ########     ########
-#######            ##################     ######     ######      ######     ########     ########
-"""SCAN DA PORTA"""
-
-#Importação de bibliotecas
-# pyrealsense2: biblioteca para interagir com câmeras Intel RealSense
-import pyrealsense2 as rs
-# Numpy: biblioteca usada para manipulação de arrays de forma eficiente
-import numpy as np
-# OpenCV: biblioteca para processamento e exibição de imagens
-import cv2
-# argparse: biblioteca usada para facilitar a manipulação de argumentos de linha de comando
-import argparse
-# os.path: biblioteca para manipulação de caminhos de arquivos
-import os.path
-# scipy.spatial.transform: módulo da SciPy para manipulação de transformações espaciais, como rotações
-from scipy.spatial.transform import Rotation
-from tqdm import tqdm
-import plotly.graph_objects as go #Trocou-se a biblioteca original matplotlib
-
-# Nome do arquivo .bag (arquivo de gravação de dados da câmera RealSense, arquivo que possui informação sobre os fluxos de dados que serão reproduzidos)
-#BAG_FILE = "p1.bag"
 BAG_FILE = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/p1.bag"
 
 def set_axes_equal(ax):
@@ -67,6 +60,7 @@ def set_axes_equal(ax):
     ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
+"""
 def criar_pipeline():
     # Cria pipeline para capturar dados da câmera
     pipeline = rs.pipeline()
@@ -81,7 +75,8 @@ def criar_pipeline():
     # Iniciar o pipeline com a configuração, permite o processamento e transmissão de dados gravados
     pipeline.start(config)
     return pipeline
-
+"""
+    
 try:
     # Cria pipeline para capturar dados da câmera
     pipeline = rs.pipeline()

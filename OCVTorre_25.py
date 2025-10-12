@@ -10,6 +10,7 @@
     ######          ###################     ######        #####     ######        #####  ###############
     ######          ###################     ######         #####    ######         ##### ###############
 
+# Bibliotecas necessárias
 import pyrealsense2 as rs
 import numpy as np
 import cv2
@@ -20,12 +21,6 @@ from tqdm import tqdm
 import plotly.graph_objects as go
 enablePlot=True
 
-"""
-def set_axes_equal(ax):
-        pass  # Não é necessário para Plotly
-"""
-
-# Nome do arquivo .bag (arquivo de gravação de dados da câmera RealSense, arquivo que possui informação sobre os fluxos de dados que serão reproduzidos)
 BAG_FILE_T = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/P1Torre_este.bag"
 
 try:
@@ -150,6 +145,7 @@ try:
     #print("Desvio Padrão Máximo geral=", desvioPadraoMaximoGeral)
     print("Array de média de frames da torre gravada no ficheiro arraySCANTorre.npy.")
 
+    """
     if enablePlot==True:
         Y, X = np.indices(image_standardeviation.shape)
         Z = image_standardeviation
@@ -183,7 +179,9 @@ try:
             title='Desvio Padrão Torre'
         )
         fig.write_html("grafico_torre_desvio_padrao.html", config=dict(responsive=True))
+    """
 
+    """
     if enablePlot==True:
         Y, X = np.indices(image_standardeviation.shape)
         Z = image_standardeviation
@@ -217,7 +215,7 @@ try:
             title='Desvio Padrão Torre Azimute 0'
         )
         fig.write_html("grafico_torre_desvio_padrao_azim0.html", config=dict(responsive=True))
-
+    """
 
     # Criar coordenadas X e Y para cada pixel
     Y, X = np.indices(image_standardeviation.shape)
@@ -262,9 +260,9 @@ try:
         # Gráfico 2D simples para diagnóstico
         fig2d = go.Figure(data=[go.Scatter(
             x=X_sample,
-            y=-Z_sample,
+            y=Z_sample,
             mode='markers',
-            marker=dict(size=4, color=Z_sample, colorscale='Inferno', colorbar=dict(title='Profundidade Torre'))
+            marker=dict(size=4, color=-Z_sample, colorscale='Inferno', colorbar=dict(title='Profundidade Torre'))
         )])
         fig2d.update_layout(
             xaxis_title='X',
@@ -275,7 +273,7 @@ try:
     else:
         print("Nenhum ponto válido para amostra!")
 
-
+    """
     if enablePlot==True:
         Y, X = np.indices(image_standardeviation.shape)
         Z = image_standardeviation
@@ -309,8 +307,9 @@ try:
             title='Desvio Padrão Torre Azimute 90'
         )
         fig.write_html("grafico_torre_desvio_padrao_azim90.html", config=dict(responsive=True))
-    
+        """
 
 finally:
     pass
 
+print("OCVTorre_25 terminado")
