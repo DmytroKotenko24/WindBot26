@@ -1,0 +1,316 @@
+################    ###################     ##################      ##################   ###############
+################    ###################     ##################      ##################   ###############
+################    ######      #######     ######      ######      ######      ######   ###############
+    ######          ######      #######     ##################      ##################   ######
+    ######          ######      #######     ################        ################     ##########
+    ######          ######      #######     ##############          ##############       ##########
+    ######          ######      #######     ######   ######         ######   ######      ######
+    ######          ######      #######     ######     ######       ######     ######    ######
+    ######          ######      #######     ######       #####      ######       #####   ###############
+    ######          ###################     ######        #####     ######        #####  ###############
+    ######          ###################     ######         #####    ######         ##### ###############
+
+import pyrealsense2 as rs
+import numpy as np
+import cv2
+import argparse
+import os.path
+from scipy.spatial.transform import Rotation
+from tqdm import tqdm
+import plotly.graph_objects as go
+enablePlot=True
+
+"""
+def set_axes_equal(ax):
+        pass  # Não é necessário para Plotly
+"""
+
+# Nome do arquivo .bag (arquivo de gravação de dados da câmera RealSense, arquivo que possui informação sobre os fluxos de dados que serão reproduzidos)
+BAG_FILE_T = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/P1Torre_este.bag"
+
+try:
+    # Cria pipeline para capturar dados da câmera
+    pipelineT = rs.pipeline()
+    # Criar objeto de configuração para o pipeline
+    configT = rs.config()
+    # Permite que o pipeline seja usado para reproduzir dados de um arquivo gravado (.bag)
+    rs.config.enable_device_from_file(configT, BAG_FILE_T)
+    # Configurar o pipeline para transmitir o fluxo de profundidade da câmera
+    # Os parâmetros podem precisar ser ajustados conforme a resolução do arquivo .bag gravado
+    # enable_stream() configura o tipo de fluxo que será transmitido (neste caso e de 16 bits = Z16)
+    configT.enable_stream(rs.stream.depth, rs.format.z16, 6)# 6 é a taxa de quadros (FPS) do fluxo de profundidade
+    # Iniciar o pipeline com a configuração, permite o processamento e transmissão de dados gravados
+    pipelineT.start(configT)
+     # Criar uma janela OpenCV chamada "Depth Stream" para exibir as imagens da câmera
+    #cv2.namedWindow("Depth Stream1", cv2.WINDOW_AUTOSIZE)    
+    # Cria um objeto colorizer para colorir o fluxo de profundidade, se necessário
+    colorizer = rs.colorizer()
+    #Define variáveis para o filtro espacial
+    spatial_magnitude = 2 # Magnitude do filtro espacial
+    spatial_smooth_alpha = 0.3 # Suavização do filtro
+    spatial_smooth_delta = 30 # Delta do filtro espacial
+    spatial_holes_fill = 0 # Preenchimento de buracos do fluxo
+    # Cria filtro temporal (para suavizar a profundidade ao longo do tempo)
+    filter_temporal = rs.temporal_filter(smooth_alpha=0.6, # Suavização temporal
+                                         smooth_delta=50, # Delta para suavização temporal
+                                         persistence_control=3) # Controle de persistência
+    # Número de frames a serem considerados para suavização
+    nr_frames_a_considerar=20
+    # Inicializando uma imagem de pré-processamento de profundidade com zeros
+    image_part_pre_tratT=np.zeros((720, 1280), dtype=np.uint16)
+
+# Streaming loop
+#While True:
+    # Cria um array de 720 por 1080 e aguarda por um conjunto de frames de profundidade
+    image_part_pre_tratT=np.empty((720,1280,0),dtype=np.uint8) 
+  
+    # Iterando sobre os quadros que serão considerados para suavização
+    print("A recolher frames")
+    for i in tqdm(range(nr_frames_a_considerar)):
+        framesT = pipelineT.wait_for_frames()
+        # Obtem o frame de profundidade
+        depth_frameT = framesT.get_depth_frame()
+	    # Cria filtro espacial para processar a profundidade
+        spatial = rs.spatial_filter()
+	    # Processa a profundidade com o filtro espacial
+        depthT = spatial.process(depth_frameT)
+	    # Ajusta os parâmetros do filtro espacial
+        spatial.set_option(rs.option.filter_magnitude, spatial_magnitude)
+        spatial.set_option(rs.option.filter_smooth_alpha, spatial_smooth_alpha)
+        spatial.set_option(rs.option.filter_smooth_delta, spatial_smooth_delta)
+        depthT = spatial.process(depthT) # Replica o filtro com novas configurações
+	    # Preenche os buracos (valores em falta) no fluxo de profundidade
+        spatial.set_option(rs.option.holes_fill, spatial_holes_fill)
+        depthT = spatial.process(depthT)
+	    # Aplica o filtro temporal para suavizar o fluxo de profundidade
+        filtered_depthT = filter_temporal.process(depthT)
+    	# Converte os dados de profundidade filtrados para um array do Numpy
+        depth_imageT = np.asanyarray(filtered_depthT.get_data())
+        depth_image_no_filterT= np.asanyarray(depth_frameT.get_data()) # Profundidade sem filtro
+
+        image_part_pre_tratT=np.dstack([image_part_pre_tratT, depth_imageT]) # Empilha os frames ao longo do eixo 2 (profundidade)
+        # Debug
+        depth_color_frameT = colorizer.colorize(filtered_depthT) # colorizer.colorize() é usado para aplicar um mapa de cores à imagem de profundidade, neste caso o "JET" mapeia os valores de profundidade para cores azul (profundidade mais próxima) e vermelho (profundidade mais distante)
+        depth_color_imageT = np.asanyarray(depth_color_frameT.get_data()) # np.asanyarray() é usado para converter os dados da imagem colorida em arrays do tipo numpy
+     
+    # Cria uma nova imagem para reorganizar a profundidade
+    image_rearengedT=np.empty((720,1280),dtype=np.uint16)  
+    image_standardeviation=np.empty((720,1280),dtype=np.uint16)  
+    image_max=np.empty((720,1280),dtype=np.uint16)  
+    image_min=np.empty((720,1280),dtype=np.uint16)  
+    image_max_deviation=np.empty((720,1280),dtype=np.uint16)  
+    image_min_deviation=np.empty((720,1280),dtype=np.uint16)  
+
+
+    print("A calcular médias de frames TORRE...")
+    # Reorganiza a imagem acumulada ao longo dos frames (pós-processamento)
+    for lT in tqdm(range (1280)):  # Precorre cada coluna da imagem (1280 colunas)
+        for kT in range(720):  # Precorre cada linha da imagem (720 linhas) 
+            zzsT=[]
+            zzsT= image_part_pre_tratT[kT, lT, :]  # Obtem os valores de profundidade ao longo dos frames para o pixeis (k, l)
+            #Calcula a média dos valores, ignorando os zeros
+            zzs_nozerosT = zzsT[zzsT!=0]
+            #Nao aceita valores superiores a 2 metros uma vez que a porta nunca vai estar a 
+            # mais que essa distamncia da camara nem inferiores a 50 cm
+            zzs_aceptable1T=zzs_nozerosT[zzs_nozerosT<1400]
+            zzs_aceptableT=zzs_aceptable1T[zzs_aceptable1T>500]
+            #if (l==857) and (k==58):
+            #    print("a")
+            if len(zzs_aceptableT) <5:  # If no non-zero values are present
+                image_rearengedT[kT, lT]=np.uint16(0)  # Se a média for zero, o valor final é zero (sem profundidade válida)
+            else:
+                mediazT=np.mean(zzs_aceptableT)
+		        # Calcula a diferença entre os valores de profundidade e a média
+                disT= [(zT, abs(zT - mediazT)) for zT in zzs_aceptableT]
+                disT.sort(key=lambda xT: xT[1]) #Ordena pela distância da média
+		        # Seleciona os 'n' valores mais próximos da média (70% dos valores)
+                nT = int(round(len(zzs_aceptableT) * 0.7)) 
+    		    # Calcula a média dos valores selecionados para o pixel (k, l)
+                image_rearengedT[kT,lT]=np.uint16(round(np.mean([xT[0] for xT in disT])))   
+                image_standardeviation[kT,lT]=np.uint16(round(np.std(zzs_aceptableT)))
+                image_max[kT,lT]=np.uint16(round(np.max(zzs_aceptableT)))
+                image_min[kT,lT]=np.uint16(round(np.min(zzs_aceptableT)))   
+                desvio=np.abs(zzs_aceptableT-image_rearengedT[kT,lT])
+                image_max_deviation[kT,lT]=np.uint16(round(np.max(desvio)))
+                image_min_deviation[kT,lT]=np.uint16(round(np.min(desvio)))
+
+    print("Médias de frames calculados(TORRE).")
+    np.save("arraySCANTorre.npy", image_rearengedT)
+    np.save("arrayMaxTorre.npy", image_max)
+    np.save("arrayMinTorre.npy", image_min)
+    np.save("arrayDesvioPadraoTorre.npy", image_standardeviation)
+    np.save("arrayDesvioMaximoTorre.npy", image_max_deviation)
+    np.save("arrayDesvioMinimoTorre.npy", image_min_deviation)
+
+    desvioPadraoMedioGeral=np.mean(image_standardeviation)
+    #desvioPadraoMaximoGeral=np.mean(image_max_deviation)
+    #desvioPadraoMinimoGeral=np.mean(image_min_deviation)
+    print("Desvio Padrão Médio geral=", desvioPadraoMedioGeral)
+    #print("Desvio Padrão Mínimo geral=", desvioPadraoMinimoGeral)
+    #print("Desvio Padrão Máximo geral=", desvioPadraoMaximoGeral)
+    print("Array de média de frames da torre gravada no ficheiro arraySCANTorre.npy.")
+
+    if enablePlot==True:
+        Y, X = np.indices(image_standardeviation.shape)
+        Z = image_standardeviation
+        X = X.ravel()
+        Y = Y.ravel()
+        Z = Z.ravel()
+        mascara_validos = Z > 0
+        X_valid = X[mascara_validos]
+        Y_valid = Y[mascara_validos]
+        Z_valid = Z[mascara_validos]
+        print(f"Desvio Padrão Torre: pontos válidos = {len(Z_valid)}")
+        np.save("debug_X_valid_torre_desvio_padrao.npy", X_valid)
+        np.save("debug_Y_valid_torre_desvio_padrao.npy", Y_valid)
+        np.save("debug_Z_valid_torre_desvio_padrao.npy", Z_valid)
+        fig = go.Figure(data=[go.Scatter3d(
+            x=X_valid, y=Y_valid, z=Z_valid,
+            mode='markers',
+            marker=dict(size=2, color=Z_valid, colorscale='Inferno', colorbar=dict(title='Desvio Padrão-Torre'))
+        )])
+        fig.update_layout(
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Desvio Padrão-Torre',
+                xaxis=dict(range=[0,1280]),
+                yaxis=dict(range=[0,720]),
+                zaxis=dict(range=[np.min(Z_valid), np.max(Z_valid)]),
+                camera=dict(eye=dict(x=0, y=2, z=0.5))
+            ),
+            autosize=True,
+            title='Desvio Padrão Torre'
+        )
+        fig.write_html("grafico_torre_desvio_padrao.html", config=dict(responsive=True))
+
+    if enablePlot==True:
+        Y, X = np.indices(image_standardeviation.shape)
+        Z = image_standardeviation
+        X = X.ravel()
+        Y = Y.ravel()
+        Z = Z.ravel()
+        mascara_validos = Z > 0
+        X_valid = X[mascara_validos]
+        Y_valid = Y[mascara_validos]
+        Z_valid = Z[mascara_validos]
+        print(f"Desvio Padrão Torre Azimute 0: pontos válidos = {len(Z_valid)}")
+        np.save("debug_X_valid_torre_desvio_padrao_azim0.npy", X_valid)
+        np.save("debug_Y_valid_torre_desvio_padrao_azim0.npy", Y_valid)
+        np.save("debug_Z_valid_torre_desvio_padrao_azim0.npy", Z_valid)
+        fig = go.Figure(data=[go.Scatter3d(
+            x=X_valid, y=Y_valid, z=Z_valid,
+            mode='markers',
+            marker=dict(size=2, color=Z_valid, colorscale='Inferno', colorbar=dict(title='Desvio Padrão-Torre'))
+        )])
+        fig.update_layout(
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Desvio Padrão-Torre',
+                xaxis=dict(range=[0,1280]),
+                yaxis=dict(range=[0,720]),
+                zaxis=dict(range=[np.min(Z_valid), np.max(Z_valid)]),
+                camera=dict(eye=dict(x=2, y=0, z=0.5))
+            ),
+            autosize=True,
+            title='Desvio Padrão Torre Azimute 0'
+        )
+        fig.write_html("grafico_torre_desvio_padrao_azim0.html", config=dict(responsive=True))
+
+
+    # Criar coordenadas X e Y para cada pixel
+    Y, X = np.indices(image_standardeviation.shape)
+    Z = image_rearengedT
+    X = X.ravel()
+    Y = Y.ravel()
+    Z = Z.ravel()
+    mascara_validos = Z > 0
+    X_valid = X[mascara_validos]
+    Y_valid = Y[mascara_validos]
+    Z_valid = Z[mascara_validos]
+    print(f"Superfície Torre: pontos válidos = {len(Z_valid)}")
+    np.save("debug_X_valid_superficie_torre.npy", X_valid)
+    np.save("debug_Y_valid_superficie_torre.npy", Y_valid)
+    np.save("debug_Z_valid_superficie_torre.npy", Z_valid)
+    # Amostra de 1000 pontos para teste visual
+    n_amostra = min(1000, len(Z_valid))
+    if n_amostra > 0:
+        idx = np.random.choice(len(Z_valid), n_amostra, replace=False)
+        X_sample = X_valid[idx]
+        Y_sample = Y_valid[idx]
+        Z_sample = Z_valid[idx]
+        Z_sample = -Z_sample # Inverte os valores de Z para melhor visualização
+        fig = go.Figure(data=[go.Scatter3d(
+            x=X_sample, y=Y_sample, z=Z_sample,
+            mode='markers',
+            marker=dict(size=4, color=Z_sample, colorscale='Inferno', colorbar=dict(title='Profundidade Torre'))
+        )])
+        fig.update_layout(
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Profundidade Torre',
+                xaxis=dict(range=[0,1280]),
+                yaxis=dict(range=[0,720]),
+                zaxis=dict(range=[np.min(Z_sample), np.max(Z_sample)]),
+                camera=dict(eye=dict(x=0, y=2, z=0.5))
+            ),
+            title='Superfície 3D da Torre (Amostra)'
+        )
+        fig.write_html("grafico_superficie_torre_amostra.html")
+        # Gráfico 2D simples para diagnóstico
+        fig2d = go.Figure(data=[go.Scatter(
+            x=X_sample,
+            y=-Z_sample,
+            mode='markers',
+            marker=dict(size=4, color=Z_sample, colorscale='Inferno', colorbar=dict(title='Profundidade Torre'))
+        )])
+        fig2d.update_layout(
+            xaxis_title='X',
+            yaxis_title='Profundidade Torre',
+            title='Diagnóstico 2D X vs Profundidade'
+        )
+        fig2d.write_html("grafico_superficie_torre_2d.html")
+    else:
+        print("Nenhum ponto válido para amostra!")
+
+
+    if enablePlot==True:
+        Y, X = np.indices(image_standardeviation.shape)
+        Z = image_standardeviation
+        X = X.ravel()
+        Y = Y.ravel()
+        Z = Z.ravel()
+        mascara_validos = Z > 0
+        X_valid = X[mascara_validos]
+        Y_valid = Y[mascara_validos]
+        Z_valid = Z[mascara_validos]
+        print(f"Desvio Padrão Torre Azimute 90: pontos válidos = {len(Z_valid)}")
+        np.save("debug_X_valid_torre_desvio_padrao_azim90.npy", X_valid)
+        np.save("debug_Y_valid_torre_desvio_padrao_azim90.npy", Y_valid)
+        np.save("debug_Z_valid_torre_desvio_padrao_azim90.npy", Z_valid)
+        fig = go.Figure(data=[go.Scatter3d(
+            x=X_valid, y=Y_valid, z=Z_valid,
+            mode='markers',
+            marker=dict(size=2, color=Z_valid, colorscale='Inferno', colorbar=dict(title='Desvio Padrão-Torre'))
+        )])
+        fig.update_layout(
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Desvio Padrão-Torre',
+                xaxis=dict(range=[0,1280]),
+                yaxis=dict(range=[0,720]),
+                zaxis=dict(range=[np.min(Z_valid), np.max(Z_valid)]),
+                camera=dict(eye=dict(x=0, y=2, z=0.5))
+            ),
+            autosize=True,
+            title='Desvio Padrão Torre Azimute 90'
+        )
+        fig.write_html("grafico_torre_desvio_padrao_azim90.html", config=dict(responsive=True))
+    
+
+finally:
+    pass
+
