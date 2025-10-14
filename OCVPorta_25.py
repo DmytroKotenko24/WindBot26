@@ -18,6 +18,7 @@ import os.path
 from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 import plotly.graph_objects as go #Trocou-se a biblioteca original matplotlib
+import os
 
 # Configurações iniciais
 enablePlot=True
@@ -25,10 +26,11 @@ Imagem2=False
 Imagem3=False
 Imagem4=False
 
-output_dir = "output_images"
-os.makedirs(output_dir, exist_ok=True)
+BAG_FILE = r"/home/dmytro-overlord/PyCharm_Workspace/Original_Bags/p1.bag"
 
-BAG_FILE = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/p1.bag"
+# Define output directory relative to this script's location
+output_dir = os.path.join(os.path.dirname(__file__), "GeneratedFiles_OCVPorta_25")
+os.makedirs(output_dir, exist_ok=True)
 
 def set_axes_equal(ax):
     """Make axes of 3D plot have equal scale so that spheres appear as spheres, cubes as cubes, etc.
@@ -101,18 +103,14 @@ try:
         depth_frame = frames.get_depth_frame() # Obtem o frame de profundidade
         spatial = rs.spatial_filter() # Cria filtro espacial para processar a profundidade
         depth = spatial.process(depth_frame) # Processa a profundidade com o filtro espacial
-	    # Ajusta os parâmetros do filtro espacial
-        spatial.set_option(rs.option.filter_magnitude, spatial_magnitude)
+        spatial.set_option(rs.option.filter_magnitude, spatial_magnitude) # Ajusta os parâmetros do filtro espacial
         spatial.set_option(rs.option.filter_smooth_alpha, spatial_smooth_alpha)
         spatial.set_option(rs.option.filter_smooth_delta, spatial_smooth_delta)
         depth = spatial.process(depth) # Replica o filtro com novas configurações
-	    # Preenche os buracos (valores em falta) no fluxo de profundidade
-        spatial.set_option(rs.option.holes_fill, spatial_holes_fill)
+        spatial.set_option(rs.option.holes_fill, spatial_holes_fill) # Preenche os buracos (valores em falta) no fluxo de profundidade
         depth = spatial.process(depth)
-	    # Aplica o filtro temporal para suavizar o fluxo de profundidade
-        filtered_depth = filter_temporal.process(depth)
-    	# Converte os dados de profundidade filtrados para um array do Numpy
-        depth_image = np.asanyarray(filtered_depth.get_data())
+        filtered_depth = filter_temporal.process(depth) # Aplica o filtro temporal para suavizar o fluxo de profundidade
+        depth_image = np.asanyarray(filtered_depth.get_data()) # Converte os dados de profundidade filtrados para um array do Numpy
         depth_image_no_filter= np.asanyarray(depth_frame.get_data()) # Profundidade sem filtro
 
         image_part_pre_trat=np.dstack([image_part_pre_trat, depth_image]) # Empilha os frames ao longo do eixo 2 (profundidade)
@@ -122,8 +120,8 @@ try:
         depth_color_image = np.asanyarray(depth_color_frame.get_data()) # np.asanyarray() é usado para converter os dados da imagem colorida em arrays do tipo numpy
 
    
-    # Cria uma nova imagem para reorganizar a profundidade
-    image_rearenged=np.empty((720,1280),dtype=np.uint16)  
+
+    image_rearenged=np.empty((720,1280),dtype=np.uint16) # Cria uma nova imagem para reorganizar a profundidade
     #for i in tqdm(range(10000)):
     print("A calcular médias de frames...")
     # Reorganiza a imagem acumulada ao longo dos frames (pós-processamento)
@@ -131,11 +129,8 @@ try:
         for k in range(720):  # Precorre cada linha da imagem (720 linhas) 
             zzs=[]
             zzs= image_part_pre_trat[k, l, :]  # Obtem os valores de profundidade ao longo dos frames para o pixeis (k, l)
-            #Calcula a média dos valores, ignorando os zeros
-            zzs_nozeros = zzs[zzs!=0]
-            #Nao aceita valores superiores a 2 metros uma vez que a porta nunca vai estar a 
-            # mais que essa distamncia da camara nem inferiores a 50 cm
-            zzs_aceptable1=zzs_nozeros[zzs_nozeros<1400]
+            zzs_nozeros = zzs[zzs!=0] #Calcula a média dos valores, ignorando os zeros
+            zzs_aceptable1=zzs_nozeros[zzs_nozeros<1400] # Ignora valores acima de 1400 mm (1.4 metros) e abaixo de 500 mm (0.5 metros)
             zzs_aceptable=zzs_aceptable1[zzs_aceptable1>500]
             #if (l==857) and (k==58):
             #    print("a")
@@ -143,13 +138,10 @@ try:
                 image_rearenged[k, l]=np.uint16(0)  # Se a média for zero, o valor final é zero (sem profundidade válida)
             else:
                 mediaz=np.mean(zzs_aceptable)
-		        # Calcula a diferença entre os valores de profundidade e a média
-                dis= [(z, abs(z - mediaz)) for z in zzs_aceptable]
+                dis= [(z, abs(z - mediaz)) for z in zzs_aceptable] # Calcula a diferença entre os valores de profundidade e a média
                 dis.sort(key=lambda x: x[1]) #Ordena pela distância da média
-		        # Seleciona os 'n' valores mais próximos da média (70% dos valores)
-                n = int(round(len(zzs_aceptable) * 0.7)) 
-    		    # Calcula a média dos valores selecionados para o pixel (k, l)
-                image_rearenged[k,l]=np.uint16(round(np.mean([x[0] for x in dis])))
+                n = int(round(len(zzs_aceptable) * 0.7)) # Seleciona os 'n' valores mais próximos da média (70% dos valores)
+                image_rearenged[k,l]=np.uint16(round(np.mean([x[0] for x in dis]))) # Calcula a média dos valores selecionados para o pixel (k, l)
                 #if l==k==69 and np.all(zzs!=0):
                 #    print("med:",np.uint16(np.mean(z_sel)) )
                 image_standardeviationP[k,l]=np.uint16(round(np.std(zzs_aceptable)))
@@ -223,7 +215,7 @@ try:
                 autosize=True
             )
 
-            fig.write_html("grafico_porta_profundidade.html", config=dict(responsive=True)) # GRAFICO OK
+            fig.write_html(os.path.join(output_dir, "grafico_porta_profundidade.html"), config=dict(responsive=True)) # GRAFICO OK
     """
 
     #desvioPadraoMedioGeral=np.mean(image_standardeviationP)
@@ -284,7 +276,7 @@ try:
             ),
             title='Porta - Desvio Padrão (Z invertido)'
         )
-        fig.write_html("grafico_porta_desvio_padrao.html") # GRAFICO OK
+        fig.write_html(os.path.join(output_dir, "grafico_porta_desvio_padrao.html")) # GRAFICO OK
     """
 
     cv2.waitKey(0)# Espera indefinidamente até que qualquer tecla seja pressionada
@@ -292,7 +284,7 @@ try:
     # O método cv2.normalize pega nos valores de profundidade da image_rearenged e vai mapeá-los para o intervalo de 0 a 255
     # Exibe a imagem de profundidade colorida em uma janela chamada "Depth Stream"
     if(Imagem2):
-        cv2.imshow("1 - Escala cinzentos", normed)
+        cv2.imshow("1 - Escala cinzetnos", normed)
         cv2.waitKey(0)# Espera indefinidamente até que qualquer tecla seja pressionada
     # Aplica um mapa de cores 'JET' à imagem normalizada.
     # Cria uma visualização colorida da imagem de profundidade, usando uma paleta de cores para representar diferentes distâncias.
@@ -390,7 +382,7 @@ if enablePlot:
         autosize=True,
         title='Contorno SD - Azimute 0 (Z invertido)'
     )
-    fig.write_html("grafico_contorno_azim0.html", config=dict(responsive=True)) # GRAFICO OK
+    fig.write_html(os.path.join(output_dir, "grafico_contorno_azim0.html"), config=dict(responsive=True)) # GRAFICO OK
 """
 
 desvioPadraoMaxContorno=np.max(contornoComSD[:,2])
@@ -416,15 +408,15 @@ else:
     print("Nenhum valor de profundidade válido no contorno.")
 
 # Save arrays to .npy files
-np.save("arraySCANPorta.npy",image_rearenged)
-print("Array de média de frames da porta gravada no ficheiro arraySCANPorta.npy.")
-np.save("maiorContornoPorta.npy", maior_contorno_bag)
-print("Array de média de frames da porta gravada no ficheiro maiorContornoPorta.npy.")
-np.save("contorno_bag_image.npy", contorno_bag_image)
-print("contorno_bag_image gravada no ficheiro contorno_bag_image.npy.")
-np.save("arrayMaxPorta.npy", image_maxP)
-np.save("arrayMinPorta.npy", image_minP)
-np.save("arrayDesvioPadraoPorta.npy", image_standardeviationP)
+np.save(os.path.join(output_dir, "arraySCANPorta.npy"),image_rearenged)
+print(f"Array de média de frames da porta gravada no ficheiro {os.path.join(output_dir, 'arraySCANPorta.npy')}.")
+np.save(os.path.join(output_dir, "maiorContornoPorta.npy"), maior_contorno_bag)
+print(f"Array de média de frames da porta gravada no ficheiro {os.path.join(output_dir, 'maiorContornoPorta.npy')}.")
+np.save(os.path.join(output_dir, "contorno_bag_image.npy"), contorno_bag_image)
+print(f"contorno_bag_image gravada no ficheiro {os.path.join(output_dir, 'contorno_bag_image.npy')}.")
+np.save(os.path.join(output_dir, "arrayMaxPorta.npy"), image_maxP)
+np.save(os.path.join(output_dir, "arrayMinPorta.npy"), image_minP)
+np.save(os.path.join(output_dir, "arrayDesvioPadraoPorta.npy"), image_standardeviationP)
 
 # Gráfico 2D do contorno
 def plot_contorno_2d(contorno, filename="contorno_2d.html", titulo="Contorno 2D"):
@@ -444,14 +436,14 @@ def plot_contorno_2d(contorno, filename="contorno_2d.html", titulo="Contorno 2D"
         width=1280,
         height=720
     )
-    fig.write_html(filename)
-    print(f"Gráfico 2D do contorno salvo em {filename}") # GRAFICO OK
+    # Always save in the output_dir folder
+    full_path = os.path.join(output_dir, filename)
+    fig.write_html(full_path)
+    print(f"Gráfico 2D do contorno salvo em {full_path}") # GRAFICO OK
 
 # Exemplo de uso após encontrar o maior contorno:
 if enablePlot:
-    try:
-        plot_contorno_2d(maior_contorno_bag, filename="contorno_maior_2d.html", titulo="Maior Contorno 2D da Porta")
-    except Exception as e:
-        print("Erro ao criar gráfico 2D do contorno:", e)
+    try: plot_contorno_2d(maior_contorno_bag, filename="contorno_maior_2d.html", titulo="Maior Contorno 2D da Porta")
+    except Exception as e: print("Erro ao criar gráfico 2D do contorno:", e)
 
 print("OCVPorta_25 terminado")
