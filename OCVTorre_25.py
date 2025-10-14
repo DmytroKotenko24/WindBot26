@@ -19,43 +19,30 @@ import os.path
 from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 import plotly.graph_objects as go
-enablePlot=True
 
+# Configurações iniciais
+enablePlot=True
 BAG_FILE_T = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/P1Torre_este.bag"
 
 try:
-    # Cria pipeline para capturar dados da câmera
     pipelineT = rs.pipeline()
-    # Criar objeto de configuração para o pipeline
     configT = rs.config()
-    # Permite que o pipeline seja usado para reproduzir dados de um arquivo gravado (.bag)
     rs.config.enable_device_from_file(configT, BAG_FILE_T)
-    # Configurar o pipeline para transmitir o fluxo de profundidade da câmera
-    # Os parâmetros podem precisar ser ajustados conforme a resolução do arquivo .bag gravado
-    # enable_stream() configura o tipo de fluxo que será transmitido (neste caso e de 16 bits = Z16)
-    configT.enable_stream(rs.stream.depth, rs.format.z16, 6)# 6 é a taxa de quadros (FPS) do fluxo de profundidade
-    # Iniciar o pipeline com a configuração, permite o processamento e transmissão de dados gravados
-    pipelineT.start(configT)
-     # Criar uma janela OpenCV chamada "Depth Stream" para exibir as imagens da câmera
-    #cv2.namedWindow("Depth Stream1", cv2.WINDOW_AUTOSIZE)    
+    configT.enable_stream(rs.stream.depth, rs.format.z16, 6)#16 bits = Z16, 6 FPS
+    pipelineT.start(configT)   
     # Cria um objeto colorizer para colorir o fluxo de profundidade, se necessário
     colorizer = rs.colorizer()
-    #Define variáveis para o filtro espacial
     spatial_magnitude = 2 # Magnitude do filtro espacial
     spatial_smooth_alpha = 0.3 # Suavização do filtro
     spatial_smooth_delta = 30 # Delta do filtro espacial
     spatial_holes_fill = 0 # Preenchimento de buracos do fluxo
-    # Cria filtro temporal (para suavizar a profundidade ao longo do tempo)
-    filter_temporal = rs.temporal_filter(smooth_alpha=0.6, # Suavização temporal
-                                         smooth_delta=50, # Delta para suavização temporal
-                                         persistence_control=3) # Controle de persistência
-    # Número de frames a serem considerados para suavização
+    filter_temporal = rs.temporal_filter(smooth_alpha=0.6, smooth_delta=50, persistence_control=3) 
     nr_frames_a_considerar=20
     # Inicializando uma imagem de pré-processamento de profundidade com zeros
     image_part_pre_tratT=np.zeros((720, 1280), dtype=np.uint16)
 
-# Streaming loop
-#While True:
+    # Streaming loop
+    #While True:
     # Cria um array de 720 por 1080 e aguarda por um conjunto de frames de profundidade
     image_part_pre_tratT=np.empty((720,1280,0),dtype=np.uint8) 
   
@@ -63,13 +50,9 @@ try:
     print("A recolher frames")
     for i in tqdm(range(nr_frames_a_considerar)):
         framesT = pipelineT.wait_for_frames()
-        # Obtem o frame de profundidade
-        depth_frameT = framesT.get_depth_frame()
-	    # Cria filtro espacial para processar a profundidade
-        spatial = rs.spatial_filter()
-	    # Processa a profundidade com o filtro espacial
-        depthT = spatial.process(depth_frameT)
-	    # Ajusta os parâmetros do filtro espacial
+        depth_frameT = framesT.get_depth_frame()                                                                  # Obtem o frame de profundidade
+        spatial = rs.spatial_filter()                                                                             # Cria filtro espacial para processar a profundidade
+        depthT = spatial.process(depth_frameT)                                                                    # Processa a profundidade com o filtro espacial
         spatial.set_option(rs.option.filter_magnitude, spatial_magnitude)
         spatial.set_option(rs.option.filter_smooth_alpha, spatial_smooth_alpha)
         spatial.set_option(rs.option.filter_smooth_delta, spatial_smooth_delta)

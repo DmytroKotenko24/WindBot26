@@ -25,24 +25,8 @@ Imagem2=False
 Imagem3=False
 Imagem4=False
 
-"""
-##variáveis controlo abrir janelas
-Imagem1=False
-Imagem2=False
-Imagem3=False
-Imagem4=False
-Imagem5=False
-Imagem6=False
-Imagem7=False
-Imagem8=False
-Imagem9=False
-Imagem10=False
-todasJanelas=True
-if todasJanelas== True:
-    Imagem1=Imagem2=Imagem3=Imagem4=Imagem5=Imagem6=Imagem7=Imagem8=Imagem9=Imagem10=True
-else:
-    Imagem1=Imagem2=Imagem3=Imagem4=Imagem5=Imagem6=Imagem7=Imagem8=Imagem9=Imagem10=False
-"""
+output_dir = "output_images"
+os.makedirs(output_dir, exist_ok=True)
 
 BAG_FILE = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/p1.bag"
 
@@ -82,20 +66,11 @@ def criar_pipeline():
 """
     
 try:
-    # Cria pipeline para capturar dados da câmera
     pipeline = rs.pipeline()
-    # Criar objeto de configuração para o pipeline
     config = rs.config()
-    # Permite que o pipeline seja usado para reproduzir dados de um arquivo gravado (.bag)
     rs.config.enable_device_from_file(config, BAG_FILE)
-    # Configurar o pipeline para transmitir o fluxo de profundidade da câmera
-    # Os parâmetros podem precisar ser ajustados conforme a resolução do arquivo .bag gravado
-    # enable_stream() configura o tipo de fluxo que será transmitido (neste caso e de 16 bits = Z16)
-    config.enable_stream(rs.stream.depth, rs.format.z16, 6) # 6 é a taxa de quadros (FPS) do fluxo de profundidade
-    # Iniciar o pipeline com a configuração, permite o processamento e transmissão de dados gravados
+    config.enable_stream(rs.stream.depth, rs.format.z16, 6)#16 bits = Z16, 6 FPS
     pipeline.start(config)
-    # Criar uma janela OpenCV chamada "Depth Stream" para exibir as imagens da câmera
-    #cv2.namedWindow("Depth Stream1", cv2.WINDOW_AUTOSIZE)
     # Cria um objeto colorizer para colorir o fluxo de profundidade, se necessário
     colorizer = rs.colorizer()
     # Define variáveis para o filtro espacial
@@ -104,9 +79,7 @@ try:
     spatial_smooth_delta = 30 # Delta do filtro espacial
     spatial_holes_fill = 1 # Preenchimento de buracos do fluxo
     # Cria filtro temporal (para suavizar a profundidade ao longo do tempo)
-    filter_temporal = rs.temporal_filter(smooth_alpha=0.6, # Suavização temporal
-                                         smooth_delta=50, # Delta para suavização temporal
-                                         persistence_control=3) # Controle de persistência
+    filter_temporal = rs.temporal_filter(smooth_alpha=0.6, smooth_delta=50, persistence_control=3) 
     # Número de frames a serem considerados para suavização
     nr_frames_a_considerar=20
     # Inicializando uma imagem de pré-processamento de profundidade com zeros
@@ -125,12 +98,9 @@ try:
     print("A recolher frames")
     for i in tqdm(range(nr_frames_a_considerar)):
         frames = pipeline.wait_for_frames() # Captura dos frames
-        # Obtem o frame de profundidade
-        depth_frame = frames.get_depth_frame()
-	    # Cria filtro espacial para processar a profundidade
-        spatial = rs.spatial_filter()
-	    # Processa a profundidade com o filtro espacial
-        depth = spatial.process(depth_frame)
+        depth_frame = frames.get_depth_frame() # Obtem o frame de profundidade
+        spatial = rs.spatial_filter() # Cria filtro espacial para processar a profundidade
+        depth = spatial.process(depth_frame) # Processa a profundidade com o filtro espacial
 	    # Ajusta os parâmetros do filtro espacial
         spatial.set_option(rs.option.filter_magnitude, spatial_magnitude)
         spatial.set_option(rs.option.filter_smooth_alpha, spatial_smooth_alpha)
@@ -190,6 +160,7 @@ try:
                 image_min_deviationP[k,l]=np.uint16(round(np.min(desvio)))
     print("Médias de frames calculados.")
 
+    #Gráfico grafico_porta_profundidade [Descomentar para ver gráfico]
     """
     # Plot da imagem de profundidade
     if enablePlot:
@@ -274,6 +245,7 @@ try:
     # print("Menor desvio geral Porta=", desvioPadraoMinimoGeral)
     # print("Maior desvio geral Porta=", desvioPadraoMaximoGeral)
 
+    # Gráfico grafico_porta_desvio_padrao [Descomentar para ver gráfico]
     """
     # Plot do desvio padrão da profundidade
     if enablePlot:
@@ -320,15 +292,16 @@ try:
     # O método cv2.normalize pega nos valores de profundidade da image_rearenged e vai mapeá-los para o intervalo de 0 a 255
     # Exibe a imagem de profundidade colorida em uma janela chamada "Depth Stream"
     if(Imagem2):
-        cv2.imshow("2-Escala cinzentos", normed)
+        cv2.imshow("1 - Escala cinzentos", normed)
         cv2.waitKey(0)# Espera indefinidamente até que qualquer tecla seja pressionada
     # Aplica um mapa de cores 'JET' à imagem normalizada.
     # Cria uma visualização colorida da imagem de profundidade, usando uma paleta de cores para representar diferentes distâncias.
     colora = cv2.applyColorMap(normed, cv2.COLORMAP_JET)
     # Exibe a imagem de profundidade colorida em uma janela chamada "Depth Stream"
     if(Imagem3):
-        cv2.imshow("3-Depth StreamB", colora)
+        cv2.imshow("2 - Depth StreamB", colora)
         cv2.waitKey(0)# Espera indefinidamente até que qualquer tecla seja pressionada
+
     # Calcula a menor distância (profundidade) na imagem, ignorando os valores zero
     # A função np.min encontra o valor mínimo da imagem de profundidade que não seja zero (ignorando assim os valores que seriam zero)
     min_dist = np.min(image_rearenged[image_rearenged!=0])
@@ -344,9 +317,10 @@ try:
     image_part_uint8= cv2.erode(image_part_uint8, kernel, iterations=1)
     # Aplica a dilatação morfológica à imagem, que expande as regiões brancas após a erosão
     image_part_uint8 = cv2.dilate(image_part_uint8, kernel, iterations=1)
+
     # Mostra a imagem após as operações morfológicas em uma nova janela chamada "Depth Stream50"       
     if(Imagem4):
-        cv2.imshow("4-Binarizado- preto ou branco", image_part_uint8)
+        cv2.imshow("3 - Binarizado [preto ou branco]", image_part_uint8)
         cv2.waitKey(0) # Espera indefinidamente até que qualquer tecla seja pressionada
         
     # Aplica um mapa de cores para facilitar a visualização da profundidade, usando o colormap 'JET'.
@@ -387,6 +361,7 @@ for ponto in maior_contorno_bag:
         contornoComSD=np.vstack((contornoComSD,point ))
     i+=1
 
+# Gráfico grafico_contorno_azim0 [Descomentar para ver gráfico]
 """
 # Desenha o maior contorno na imagem preta (contorno_bag_image) com a cor verde (0, 255, 0) e espessura de 2 pixels
 if enablePlot:
@@ -422,9 +397,9 @@ desvioPadraoMaxContorno=np.max(contornoComSD[:,2])
 desvioPadraoMinContorno=np.min(contornoComSD[:,2])
 desvioPadraoMedContorno=np.mean(contornoComSD[:,2])
 
-print("Desvio Padrão Máximo Contorno=", desvioPadraoMaxContorno)
-print("Desvio Padrão Mínimo Contorno=", desvioPadraoMinContorno)
-print("Desvio Padrão Médio Contorno=", desvioPadraoMedContorno)
+print("Desvio Padrão Máximo Contorno =", desvioPadraoMaxContorno)
+print("Desvio Padrão Mínimo Contorno =", desvioPadraoMinContorno)
+print("Desvio Padrão Médio Contorno =", desvioPadraoMedContorno)
 
 valores_contorno = []
 for ponto in maior_contorno_bag:
