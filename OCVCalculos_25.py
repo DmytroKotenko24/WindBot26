@@ -9,14 +9,14 @@ from scipy.spatial.transform import Rotation
 from tqdm import tqdm
 
 # Configurações iniciais
-image_rearenged = np.load(r"/home/dmytro-overlord/VSCode_Workspace/arraySCANPorta.npy")
-image_rearengedT = np.load(r"/home/dmytro-overlord/VSCode_Workspace/arraySCANTorre.npy")
-maior_contorno_bag=np.load(r"/home/dmytro-overlord/VSCode_Workspace/maiorContornoPorta.npy")
-contorno_bag_image=np.load(r"/home/dmytro-overlord/VSCode_Workspace/contorno_bag_image.npy")
+image_rearenged = np.load(r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\GeneratedFiles_OCVPorta_25\arraySCANPorta.npy")
+image_rearengedT = np.load(r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\GeneratedFiles_OCVTorre_25\arraySCANTorre.npy")
+maior_contorno_bag=np.load(r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\GeneratedFiles_OCVPorta_25\maiorContornoPorta.npy")
+contorno_bag_image=np.load(r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\GeneratedFiles_OCVPorta_25\contorno_bag_image.npy")
 enablePlot=False
 
 """Criacao pipeline"""
-BAG_FILE = r"/home/dmytro-overlord/VSCode_Workspace/Original_Bags/p1.bag"
+BAG_FILE = r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\20251029_100456.bag"
 # Cria pipeline para capturar dados da câmera
 pipeline = rs.pipeline()
 # Criar objeto de configuração para o pipeline
@@ -1462,7 +1462,7 @@ targetnumber11: int = 0
 #z: float = 1712.22
 #z: float = 1552.22
 #criar ficheiro txt para depois meter no rapid
-with open('ficheiroRAPID', 'w') as ficheiro:
+with open('GeneratedFiles_OCVCalculos_25/ficheiroRAPID_5', 'w') as ficheiro:
     ##definir os targets no module 1
     ficheiro.write("MODULE AWIND1 \n")
     ficheiro.write("    PERS tooldata ClbTool:=[TRUE,[[0,0,340],[1,0,0,0]],[1,[0,0,120],[1,0,0,0],0,0,0]]; \n")
@@ -1918,8 +1918,6 @@ with open('ficheiroRAPID', 'w') as ficheiro:
     ficheiro.close()
 ####################FIM RAPID
 
-
-print("Programa terminado")
 
 print("Programa terminado")
 

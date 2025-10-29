@@ -23,7 +23,7 @@ import os
 
 # Configurações iniciais
 enablePlot=True
-BAG_FILE_T = r"/home/dmytro-overlord/PyCharm_Workspace/Original_Bags/P1Torre_este.bag"
+BAG_FILE = r"C:\Users\Dmytro\Documents\VSCode_Workspace\WinBot26\20251029_100520.bag"
 
 # Define output directory relative to this script's location
 output_dir = os.path.join(os.path.dirname(__file__), "GeneratedFiles_OCVTorre_25")
@@ -32,7 +32,7 @@ os.makedirs(output_dir, exist_ok=True)
 try:
     pipelineT = rs.pipeline()
     configT = rs.config()
-    rs.config.enable_device_from_file(configT, BAG_FILE_T)
+    rs.config.enable_device_from_file(configT, BAG_FILE)
     configT.enable_stream(rs.stream.depth, rs.format.z16, 6)#16 bits = Z16, 6 FPS
     pipelineT.start(configT)
     colorizer = rs.colorizer() # Cria um objeto colorizer para colorir o fluxo de profundidade, se necessário
@@ -235,9 +235,10 @@ try:
                 zaxis=dict(range=[np.min(Z_sample), np.max(Z_sample)]),
                 camera=dict(eye=dict(x=0, y=2, z=0.5))
             ),
+            autosize=True,
             title='Superfície 3D da Torre (Amostra)'
         )
-        fig.write_html(os.path.join(output_dir, "grafico_superficie_torre_amostra.html"))
+        fig.write_html(os.path.join(output_dir, "grafico_superficie_torre_amostra.html"),config=dict(responsive=True))
         # Gráfico 2D simples para diagnóstico
         fig2d = go.Figure(data=[go.Scatter(
             x=X_sample,
